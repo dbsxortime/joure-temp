@@ -1,0 +1,2160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JOURE Weather & Calendar</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        overflow-x: hidden;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+        position: relative;
+        overflow-x: hidden;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* Background Gradient Layers */
+      .bg-layer {
+        position: fixed;
+        inset: 0;
+        transition:
+          opacity 0.8s ease,
+          background 0.8s ease;
+        pointer-events: none;
+      }
+
+      /* 공통: 이동 효과가 보이게 배경 크기를 키움 */
+      .bg-top,
+      .bg-bottom {
+        background-repeat: no-repeat;
+        background-size: 220% 220%;
+        will-change: background-position;
+      }
+
+      /* Top gradient: 위에서 아래로 부드럽게 깔리면서 좌우로 미세 이동 */
+      .bg-top {
+        z-index: 1;
+        background-image: linear-gradient(
+          170deg,
+          var(--color-top) 0%,
+          transparent 40%
+        );
+        animation: moveTop 8s ease-in-out infinite alternate;
+        opacity: 0.9;
+      }
+
+      /* Bottom gradient: 아래에서 위로 깔리면서 반대 방향으로 미세 이동 */
+      .bg-bottom {
+        z-index: 0;
+        background-image: linear-gradient(
+          190deg,
+          transparent 0%,
+          var(--color-bottom) 100%
+        );
+        animation: moveBottom 12s ease-in-out infinite alternate;
+        opacity: 1;
+      }
+
+      /* ⛳️ 배경 포지션만 살짝 바꾸는 방식이라 자연스럽고 부담 적음 */
+      @keyframes moveTop {
+        0% {
+          background-position: 0% 0%;
+        }
+        40% {
+          background-position: 25% 8%;
+        }
+        100% {
+          background-position: 50% 12%;
+        }
+      }
+
+      @keyframes moveBottom {
+        0% {
+          background-position: 100% 100%;
+        }
+        60% {
+          background-position: 70% 88%;
+        }
+        100% {
+          background-position: 50% 84%;
+        }
+      }
+
+      /* 저감 모션 선호 시 애니메이션 정지 */
+      @media (prefers-reduced-motion: reduce) {
+        .bg-top,
+        .bg-bottom {
+          animation: none;
+        }
+      }
+
+      .bg-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0);
+        transition: background 0.8s ease;
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      /* Theme Colors */
+      body.clear-day {
+        --color-top: #298cff;
+        --color-bottom: #b8d3e0;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(64 99 127 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.clear-evening {
+        --color-top: #1b59a1;
+        --color-bottom: #90a9b5;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(63 86 116 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.clear-night {
+        --color-top: #224964;
+        --color-bottom: #617d91;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(41 53 63 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.cloudy-day {
+        --color-top: #96bfd4;
+        --color-bottom: #7a8591;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(84 116 131 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.cloudy-evening {
+        --color-top: rgb(143, 174, 189);
+        --color-bottom: #536170;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(84 106 131 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.cloudy-night {
+        --color-top: #8ba5b7;
+        --color-bottom: #595e66;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(79 81 86 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.very-cloudy-day {
+        --color-top: #595e66;
+        --color-bottom: #a5aab0;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(103 103 103 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.very-cloudy-evening {
+        --color-top: #6a6e74;
+        --color-bottom: #4a5560;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(103 103 103 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.very-cloudy-night {
+        --color-top: #4a4e54;
+        --color-bottom: #6a6e74;
+        --text-color: #ffffff;
+        --card-background: rgb(70 69 74 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.rain-day {
+        --color-top: #a8c3d0;
+        --color-bottom: #8ba5b7;
+        --text-color: #ffffff;
+        --card-background: rgb(85 126 145 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.rain-evening {
+        --color-top: #a1c5e2;
+        --color-bottom: #7290ad;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(57 87 101 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.rain-night {
+        --color-top: #7893a0;
+        --color-bottom: #5a7e89;
+        --text-color: #ffffff;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(25 44 52 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.snow-day {
+        --color-top: #c1dcff;
+        --color-bottom: #f4f6ff;
+        --text-color: #525252;
+        --text-color-darker: #3e3e3e;
+        --card-background: rgb(83 166 192 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.snow-evening {
+        --color-top: #c1dcff;
+        --color-bottom: #a1c5e2;
+        --text-color: #ffffff;
+        --card-background: rgb(33 82 98 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      body.snow-night {
+        --color-top: #a8a8a0;
+        --color-bottom: #7893a0;
+        --text-color: #ffffff;
+        --card-background: rgb(37 48 52 / 30%);
+        --text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Evening/Night Overlays */
+      body.clear-evening .bg-overlay,
+      body.cloudy-evening .bg-overlay,
+      body.very-cloudy-evening .bg-overlay,
+      body.rain-evening .bg-overlay,
+      body.snow-evening .bg-overlay {
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      body.clear-night .bg-overlay,
+      body.cloudy-night .bg-overlay,
+      body.very-cloudy-night .bg-overlay,
+      body.rain-night .bg-overlay,
+      body.snow-night .bg-overlay {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      /* Common Card Styles */
+      .card {
+        background: var(--card-background);
+        backdrop-filter: blur(40px);
+        mix-blend-mode: multiply;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+      }
+
+      .card:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+      }
+
+      /* Gradation Text Effect */
+      .gradation-text {
+        text-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.2),
+          0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .container {
+        width: 100%;
+        position: relative;
+        z-index: 10;
+        color: var(--text-color);
+        margin: 0;
+      }
+
+      /* Responsive container padding */
+      @media (max-width: 650px) {
+        .container {
+          padding: 40px 20px 20px;
+          min-height: 100vh;
+          margin: 0 auto;
+        }
+      }
+
+      @media (min-width: 651px) and (max-width: 1400px) {
+        .container {
+          padding: 20px 20px 20px;
+          max-width: 1200px;
+          width: 90vw;
+          height: 90vh;
+          margin: 0 auto;
+          border-radius: 20px;
+        }
+      }
+
+      @media (min-width: 1401px) {
+        .container {
+          padding: 20px 40px 20px;
+          max-width: 1200px;
+          width: 90vw;
+          height: 90vh;
+          margin: 0 auto;
+          border-radius: 20px;
+        }
+      }
+
+      .container::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+      }
+
+      .container::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      .header {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+
+      .logo {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        opacity: 0.7;
+      }
+
+      /* External Controls */
+      .external-controls {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        border-radius: 20px;
+        padding: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+
+      .external-controls.card {
+        border-radius: 20px;
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .theme-switcher {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .time-controls {
+        display: flex;
+        gap: 6px;
+      }
+
+      .theme-btn,
+      .time-btn {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .theme-btn.card,
+      .time-btn.card {
+        border-radius: 20px;
+      }
+
+      .theme-btn:hover,
+      .time-btn:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+
+      .theme-btn.active,
+      .time-btn.active {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .time-controls {
+        display: flex;
+        gap: 4px;
+      }
+
+      /* View Management */
+      .views-container {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .view {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
+      }
+
+      .view.active {
+        position: relative;
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: all;
+      }
+
+      .view.slide-out-left {
+        transform: translateX(-100%);
+        opacity: 0;
+      }
+
+      .view.slide-out-right {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      /* Weather View */
+      .location {
+        font-size: 18px;
+        font-weight: 400;
+        /* opacity: 0.8; */
+        margin-bottom: 8px;
+        letter-spacing: 0.3px;
+      }
+
+      .weather-symbol {
+        font-size: 48px;
+        margin-bottom: 5px;
+        opacity: 0.9;
+      }
+
+      .temperature {
+        font-size: 88px;
+        font-weight: 300;
+        line-height: 1;
+        margin-bottom: 12px;
+        letter-spacing: -3px;
+      }
+
+      .condition {
+        font-size: 24px;
+        font-weight: 400;
+        margin-bottom: 24px;
+        opacity: 0.8;
+        letter-spacing: 0.2px;
+      }
+
+      .weather-details-compact {
+        display: none;
+      }
+
+      .detail-compact {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .detail-compact-label {
+        font-size: 11px;
+        font-weight: 500;
+        opacity: 0.4;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .detail-compact-value {
+        font-size: 20px;
+        font-weight: 500;
+        opacity: 0.85;
+      }
+
+      .today-summary {
+        padding: 20px;
+        margin-bottom: 32px;
+        line-height: 1.6;
+        word-break: keep-all;
+      }
+
+      .today-summary-title {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.5;
+        margin-bottom: 12px;
+      }
+
+      .today-summary-text {
+        font-size: 14px;
+        font-weight: 400;
+        opacity: 0.75;
+        line-height: 1.7;
+      }
+
+      .details {
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        padding-top: 32px;
+        display: none;
+      }
+
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .detail-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .detail-label {
+        font-size: 13px;
+        font-weight: 400;
+        opacity: 0.5;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .detail-value {
+        font-size: 18px;
+        font-weight: 500;
+        opacity: 0.9;
+      }
+
+      .forecast {
+        margin-top: 40px;
+        padding-top: 32px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      .forecast-title {
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 24px;
+      }
+
+      .forecast-scroll {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 12px;
+        margin: 0 -16px;
+        padding-left: 16px;
+        padding-right: 16px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+      }
+
+      .forecast-scroll::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      .forecast-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .forecast-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+      }
+
+      .forecast-item {
+        flex: 0 0 auto;
+        width: 140px;
+        padding: 16px 12px;
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .forecast-item:hover {
+        opacity: 0.8;
+        transform: translateY(-2px);
+      }
+
+      .forecast-time {
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.5;
+        margin-bottom: 12px;
+      }
+
+      .forecast-icon {
+        font-size: 28px;
+        opacity: 0.8;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+
+      .forecast-temp {
+        font-size: 24px;
+        font-weight: 500;
+        margin-bottom: 12px;
+        text-align: center;
+      }
+
+      .forecast-event {
+        margin-top: auto;
+        padding-top: 8px;
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        min-height: 48px;
+      }
+
+      .forecast-event:empty {
+        border-top: none;
+        padding-top: 0;
+        min-height: 0;
+      }
+
+      .forecast-event-name {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 3px;
+        opacity: 0.8;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .forecast-event-location {
+        font-size: 11px;
+        font-weight: 500;
+        opacity: 0.5;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Calendar View - Minimal */
+      .calendar {
+        padding: 20px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: none;
+
+        max-width: 600px;
+        margin: 0 auto 24px;
+      }
+
+      .calendar.card {
+        border-radius: 20px;
+      }
+
+      @media (min-aspect-ratio: 1/1) {
+        /* Weather View - Horizontal Layout */
+        #weatherView {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .weather-top {
+          display: flex;
+          flex-direction: row;
+          gap: 32px;
+          align-items: flex-start;
+        }
+
+        .weather-main {
+          flex: 1;
+          min-width: 0;
+          filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.1));
+        }
+
+        .weather-summary {
+          flex: 0 0 auto;
+          min-width: 350px;
+          max-width: 60%;
+          position: relative;
+          bottom: 0;
+          align-self: flex-end;
+        }
+
+        @media (max-width: 650px) {
+          .container {
+            padding: 20px;
+          }
+
+          .weather-top {
+            gap: 20px;
+          }
+
+          .weather-summary {
+            min-width: 200px;
+            max-width: 55%;
+          }
+        }
+
+        .condition {
+          margin-bottom: 0;
+        }
+
+        .today-summary {
+          margin-bottom: 0;
+        }
+
+        .weather-bottom {
+          width: 100%;
+        }
+
+        /* Calendar View - Horizontal Layout */
+        .calendar {
+          max-width: none;
+          margin-left: 0;
+          margin-right: 0;
+          display: flex;
+          flex-direction: row;
+          gap: 32px;
+          height: auto;
+        }
+
+        .calendar-left {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .calendar-header,
+        .calendar-weekdays,
+        .calendar-grid {
+          flex-shrink: 0;
+        }
+
+        .calendar-grid {
+          margin-bottom: 0;
+        }
+
+        .events-minimal {
+          margin-left: 0;
+          padding-top: 0;
+          border-top: none !important;
+          flex: 1;
+          max-height: none;
+          min-width: 150px;
+          max-width: 300px;
+        }
+      }
+
+      .calendar-header {
+        margin-bottom: 24px;
+        flex-shrink: 0;
+      }
+
+      .calendar-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+      }
+
+      .calendar-title {
+        text-align: center;
+        flex: 1;
+      }
+
+      .calendar-month {
+        font-size: 42px;
+        font-weight: 300;
+        margin-bottom: 4px;
+        letter-spacing: -1px;
+      }
+
+      .calendar-year {
+        font-size: 14px;
+        font-weight: 400;
+        opacity: 0.4;
+        letter-spacing: 0.5px;
+      }
+
+      .nav-arrow {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 300;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: var(--text-color);
+      }
+
+      .nav-arrow.card {
+        border-radius: 50%;
+      }
+
+      .nav-arrow:hover {
+        opacity: 0.9;
+        transform: scale(1.1);
+      }
+
+      .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 12px;
+        margin-bottom: 8px;
+        flex-shrink: 0;
+      }
+
+      .calendar-weekday {
+        text-align: center;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.7;
+        padding: 12px 0;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 12px;
+        flex-shrink: 0;
+        margin-bottom: 24px;
+      }
+
+      .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: 400;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-radius: 8px;
+      }
+
+      .calendar-day:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .calendar-day.today {
+        background: rgba(255, 255, 255, 0.2);
+        font-weight: 600;
+      }
+
+      .calendar-day.other-month {
+        opacity: 0.2;
+      }
+
+      .calendar-day.has-event {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .calendar-day.has-event .event-dots {
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 1px;
+        font-size: 6px;
+        line-height: 1;
+        z-index: 10;
+      }
+
+      .calendar-day.has-event .event-dot {
+        opacity: 0.8;
+        display: inline-block;
+        font-size: 6px;
+        line-height: 1;
+      }
+
+      .calendar-day.selected {
+        background: rgba(255, 255, 255, 0.3);
+        font-weight: 600;
+        transform: scale(1.1);
+      }
+
+      .calendar-day.selected.has-event .event-dot {
+        opacity: 1;
+        font-size: 10px;
+      }
+
+      .events-minimal {
+        margin-left: 20px;
+        padding-top: 32px;
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        flex: 1;
+        overflow-y: auto;
+        max-height: calc(100vh - 400px);
+      }
+
+      .event-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .event-row::before {
+        content: "";
+        position: absolute;
+        left: -20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 60%;
+        border-radius: 2px;
+        background: var(--event-color);
+      }
+
+      .event-row:last-child {
+        border-bottom: none;
+      }
+
+      .event-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .event-description {
+        font-size: 15px;
+        font-weight: 400;
+        opacity: 0.8;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .event-color-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .event-time {
+        font-size: 12px;
+        font-weight: 400;
+        opacity: 0.5;
+        letter-spacing: 0.3px;
+      }
+
+      .event-time.all-day {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2px 8px;
+        border-radius: 10px;
+        display: inline-block;
+        width: fit-content;
+      }
+
+      .event-location {
+        font-size: 11px;
+        font-weight: 400;
+        opacity: 0.6;
+        letter-spacing: 0.2px;
+        margin-top: 2px;
+      }
+
+      .event-weather {
+        font-size: 11px;
+        font-weight: 400;
+        opacity: 0.5;
+        letter-spacing: 0.2px;
+        margin-top: 1px;
+      }
+
+      .event-temp {
+        font-size: 15px;
+        font-weight: 500;
+        opacity: 0.6;
+      }
+
+      /* Bottom Navigation */
+      .floating-nav {
+        position: fixed;
+        bottom: 32px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        z-index: 1000;
+        pointer-events: all;
+      }
+
+      .nav-btn {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        padding: 0;
+      }
+
+      .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.5);
+        transform: scale(1.3);
+      }
+
+      .nav-btn.active {
+        width: 40px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      .nav-icon,
+      .nav-btn span {
+        display: none;
+      }
+
+      .footer {
+        margin-top: 12px;
+        margin-bottom: 24px;
+        text-align: center;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        color: var(--text-color-darker);
+      }
+
+      @media (max-width: 480px) {
+        .temperature {
+          font-size: 72px;
+        }
+
+        .calendar-grid {
+          gap: 8px;
+        }
+
+        .calendar-day {
+          font-size: 14px;
+        }
+
+        .external-controls {
+          top: 10px;
+          right: 10px;
+          padding: 8px;
+          display: none;
+        }
+
+        .theme-btn,
+        .time-btn {
+          padding: 5px 10px;
+          font-size: 10px;
+        }
+
+        .forecast-item {
+          width: 120px;
+          min-height: 160px;
+        }
+
+        .floating-nav {
+          bottom: 20px;
+          gap: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body class="clear-day">
+    <div class="bg-layer bg-top"></div>
+    <div class="bg-layer bg-bottom"></div>
+    <div class="bg-overlay"></div>
+
+    <!-- External Controls -->
+    <div class="external-controls card">
+      <div class="controls">
+        <div class="theme-switcher">
+          <button class="theme-btn card active" data-theme="clear">맑음</button>
+          <button class="theme-btn card" data-theme="cloudy">흐림</button>
+          <button class="theme-btn card" data-theme="very-cloudy">
+            매우흐림
+          </button>
+          <button class="theme-btn card" data-theme="rain">비</button>
+          <button class="theme-btn card" data-theme="snow">눈</button>
+        </div>
+        <div class="time-controls">
+          <button class="time-btn card active" data-time="day">아침</button>
+          <button class="time-btn card" data-time="evening">저녁</button>
+          <button class="time-btn card" data-time="night">밤</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="header">
+        <div class="logo">JOURE</div>
+      </div>
+
+      <!-- Weather View -->
+      <div class="views-container">
+        <div class="view active" id="weatherView" data-index="0">
+          <div class="weather-top">
+            <div class="weather-main">
+              <div class="location gradation-text" id="location">
+                서울, 대한민국
+              </div>
+              <div class="weather-symbol gradation-text" id="weatherSymbol">
+                ☀️
+              </div>
+              <div class="temperature gradation-text" id="temperature">24°</div>
+              <div class="condition gradation-text" id="condition">
+                맑고 따뜻함
+              </div>
+
+              <div class="weather-details-compact">
+                <div class="detail-compact">
+                  <div class="detail-compact-label">체감</div>
+                  <div
+                    class="detail-compact-value gradation-text"
+                    id="feelsLike"
+                  >
+                    26°
+                  </div>
+                </div>
+                <div class="detail-compact">
+                  <div class="detail-compact-label">습도</div>
+                  <div
+                    class="detail-compact-value gradation-text"
+                    id="humidity"
+                  >
+                    45%
+                  </div>
+                </div>
+                <div class="detail-compact">
+                  <div class="detail-compact-label">바람</div>
+                  <div class="detail-compact-value gradation-text" id="wind">
+                    12 km/h
+                  </div>
+                </div>
+                <div class="detail-compact">
+                  <div class="detail-compact-label">기압</div>
+                  <div
+                    class="detail-compact-value gradation-text"
+                    id="pressure"
+                  >
+                    1013 hPa
+                  </div>
+                </div>
+              </div>
+
+              <div class="details">
+                <div class="detail-row">
+                  <span class="detail-label">체감 온도</span>
+                  <span class="detail-value gradation-text" id="feelsLike2"
+                    >26°</span
+                  >
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">습도</span>
+                  <span class="detail-value gradation-text" id="humidity2"
+                    >45%</span
+                  >
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">바람</span>
+                  <span class="detail-value gradation-text" id="wind2"
+                    >12 km/h</span
+                  >
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">기압</span>
+                  <span class="detail-value gradation-text" id="pressure2"
+                    >1013 hPa</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="weather-summary">
+              <div class="today-summary card">
+                <div class="today-summary-title">오늘의 날씨</div>
+                <div class="today-summary-text" id="todaySummary">
+                  오늘은 하루 종일 맑은 날씨가 계속됩니다. 오후 6시 강남에서 팀
+                  미팅이 있으며, 현지 기온은 23°로 예상됩니다. 오전 9시 이태원
+                  카페 약속 시 20°의 쾌적한 날씨입니다. 가벼운 긴팔 셔츠나 얇은
+                  가디건을 추천합니다.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="weather-bottom">
+            <div class="forecast">
+              <div class="forecast-title">시간별 예보</div>
+              <div class="forecast-scroll" id="forecastScroll">
+                <!-- Hourly forecast items will be generated here -->
+              </div>
+            </div>
+
+            <div class="footer">마지막 업데이트: 오늘, 오후 3:42</div>
+          </div>
+        </div>
+
+        <!-- Calendar View - Minimal -->
+        <div class="view calendar card" id="calendarView" data-index="1">
+          <div class="calendar-left">
+            <div class="calendar-header">
+              <div class="calendar-nav">
+                <button class="nav-arrow card" onclick="goToPreviousMonth()">
+                  ‹
+                </button>
+                <div class="calendar-title">
+                  <div class="calendar-month">10월</div>
+                  <div class="calendar-year">2025</div>
+                </div>
+                <button class="nav-arrow card" onclick="goToNextMonth()">
+                  ›
+                </button>
+              </div>
+            </div>
+
+            <div class="calendar-weekdays">
+              <div class="calendar-weekday">일</div>
+              <div class="calendar-weekday">월</div>
+              <div class="calendar-weekday">화</div>
+              <div class="calendar-weekday">수</div>
+              <div class="calendar-weekday">목</div>
+              <div class="calendar-weekday">금</div>
+              <div class="calendar-weekday">토</div>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid">
+              <!-- Calendar days will be generated here -->
+            </div>
+          </div>
+
+          <div class="events-minimal">
+            <!-- Events will be dynamically generated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation (Outside Container) -->
+    <div class="floating-nav">
+      <button class="nav-btn active" data-index="0"></button>
+      <button class="nav-btn" data-index="1"></button>
+    </div>
+
+    <script>
+      // Wait for DOM to be fully loaded
+      document.addEventListener("DOMContentLoaded", function () {
+        const weatherData = {
+          clear: {
+            location: "서울, 대한민국",
+            symbol: "☀️",
+            temperature: "24°",
+            condition: "맑고 따뜻함",
+            feelsLike: "26°",
+            humidity: "45%",
+            wind: "12 km/h",
+            pressure: "1013 hPa",
+            summary:
+              "오늘은 하루 종일 맑은 날씨가 계속됩니다. 오후 6시 강남에서 팀 미팅이 있으며, 현지 기온은 23°로 예상됩니다. 오전 9시 이태원 카페 약속 시 20°의 쾌적한 날씨입니다. 가벼운 긴팔 셔츠나 얇은 가디건을 추천합니다.",
+          },
+          cloudy: {
+            location: "런던, 영국",
+            symbol: "☁️",
+            temperature: "16°",
+            condition: "대체로 흐림",
+            feelsLike: "14°",
+            humidity: "72%",
+            wind: "18 km/h",
+            pressure: "1008 hPa",
+            summary:
+              "오늘은 구름이 많은 날씨입니다. 기온은 16°로 쌀쌀하며, 바람이 다소 강하게 불 수 있습니다. 외출 시 가벼운 바람막이나 재킷을 착용하시는 것을 추천합니다.",
+          },
+          "very-cloudy": {
+            location: "오슬로, 노르웨이",
+            symbol: "☁️",
+            temperature: "12°",
+            condition: "매우 흐림",
+            feelsLike: "10°",
+            humidity: "80%",
+            wind: "24 km/h",
+            pressure: "1005 hPa",
+            summary:
+              "오늘은 구름이 두껍게 낀 날씨로 기온이 낮습니다. 체감온도가 10°까지 떨어지니 따뜻한 외투를 꼭 착용하세요. 바람도 강하니 모자나 스카프를 준비하시면 좋습니다.",
+          },
+          rain: {
+            location: "밴쿠버, 캐나다",
+            symbol: "🌧️",
+            temperature: "11°",
+            condition: "가벼운 비",
+            feelsLike: "9°",
+            humidity: "88%",
+            wind: "22 km/h",
+            pressure: "1002 hPa",
+            summary:
+              "오늘은 하루 종일 가벼운 비가 내립니다. 우산을 꼭 챙기시고, 방수 재킷이나 레인코트를 착용하시면 좋습니다. 습도가 높아 체감온도가 낮으니 보온에 신경 쓰세요.",
+          },
+          snow: {
+            location: "레이캬비크, 아이슬란드",
+            symbol: "❄️",
+            temperature: "2°",
+            condition: "가벼운 눈",
+            feelsLike: "-1°",
+            humidity: "75%",
+            wind: "15 km/h",
+            pressure: "1010 hPa",
+            summary:
+              "오늘은 가벼운 눈이 내립니다. 기온이 영하로 떨어지니 두꺼운 패딩이나 코트, 목도리, 장갑을 착용하세요. 눈길에 미끄러질 수 있으니 조심하시기 바랍니다.",
+          },
+        };
+
+        let currentTheme = "clear";
+        let currentTime = "day";
+
+        // Theme switching
+        const themeButtons = document.querySelectorAll(".theme-btn");
+        const timeButtons = document.querySelectorAll(".time-btn");
+        const body = document.body;
+
+        function updateWeather(theme) {
+          const data = weatherData[theme];
+          document.getElementById("location").textContent = data.location;
+          document.getElementById("weatherSymbol").textContent = data.symbol;
+          document.getElementById("temperature").textContent = data.temperature;
+          document.getElementById("condition").textContent = data.condition;
+          document.getElementById("feelsLike").textContent = data.feelsLike;
+          document.getElementById("humidity").textContent = data.humidity;
+          document.getElementById("wind").textContent = data.wind;
+          document.getElementById("pressure").textContent = data.pressure;
+          document.getElementById("todaySummary").textContent = data.summary;
+        }
+
+        function updateBackground() {
+          body.className = `${currentTheme}-${currentTime}`;
+        }
+
+        themeButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            currentTheme = button.dataset.theme;
+            themeButtons.forEach((btn) => btn.classList.remove("active"));
+            button.classList.add("active");
+            updateBackground();
+            updateWeather(currentTheme);
+          });
+        });
+
+        timeButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            currentTime = button.dataset.time;
+            timeButtons.forEach((btn) => btn.classList.remove("active"));
+            button.classList.add("active");
+            updateBackground();
+          });
+        });
+
+        // Minimal navigation with slide effect
+        const navButtons = document.querySelectorAll(".nav-btn");
+        const views = document.querySelectorAll(".view");
+        let currentViewIndex = 0;
+
+        navButtons.forEach((button, index) => {
+          button.addEventListener("click", () => {
+            const targetIndex = index;
+
+            if (targetIndex === currentViewIndex) return;
+
+            const currentView = views[currentViewIndex];
+            const targetView = views[targetIndex];
+
+            // Determine slide direction
+            if (targetIndex > currentViewIndex) {
+              currentView.classList.add("slide-out-left");
+              targetView.style.transform = "translateX(100%)";
+            } else {
+              currentView.classList.add("slide-out-right");
+              targetView.style.transform = "translateX(-100%)";
+            }
+
+            currentView.classList.remove("active");
+
+            setTimeout(() => {
+              targetView.classList.add("active");
+              targetView.style.transform = "translateX(0)";
+
+              setTimeout(() => {
+                currentView.classList.remove(
+                  "slide-out-left",
+                  "slide-out-right"
+                );
+              }, 500);
+            }, 50);
+
+            navButtons.forEach((btn) => btn.classList.remove("active"));
+            button.classList.add("active");
+
+            currentViewIndex = targetIndex;
+          });
+        });
+
+        // Google Calendar colors
+        const googleColors = {
+          red: "#ea4335",
+          orange: "#ff9800",
+          yellow: "#fdd835",
+          green: "#34a853",
+          teal: "#00acc1",
+          blue: "#4285f4",
+          purple: "#9c27b0",
+          pink: "#e91e63",
+          brown: "#795548",
+          gray: "#9aa0a6",
+        };
+
+        // Calendar events data with more events and time details
+        const calendarEvents = {
+          1: [
+            {
+              name: "신년회",
+              color: googleColors.red,
+              temp: "5°",
+              time: "하루종일",
+              type: "all-day",
+              location: "회사 대강당",
+              weather: "맑음",
+            },
+            {
+              name: "새해 다짐",
+              color: googleColors.blue,
+              temp: "3°",
+              time: "09:00-10:00",
+              type: "time",
+              location: "집",
+              weather: "맑음",
+            },
+          ],
+          2: [
+            {
+              name: "휴식일",
+              color: googleColors.gray,
+              temp: "7°",
+              time: "하루종일",
+              type: "all-day",
+              location: "집",
+              weather: "흐림",
+            },
+          ],
+          3: [
+            {
+              name: "팀 미팅",
+              color: googleColors.blue,
+              temp: "8°",
+              time: "14:00-15:00",
+              type: "time",
+              location: "회의실 A",
+              weather: "맑음",
+            },
+            {
+              name: "프로젝트 검토",
+              color: googleColors.teal,
+              temp: "6°",
+              time: "오후 4:30",
+              type: "time",
+            },
+          ],
+          4: [
+            {
+              name: "개인 업무",
+              color: googleColors.green,
+              temp: "9°",
+              time: "오전 10:00",
+              type: "time",
+            },
+          ],
+          5: [
+            {
+              name: "프로젝트 발표",
+              color: googleColors.purple,
+              temp: "12°",
+              time: "오전 11:00",
+              type: "time",
+            },
+            {
+              name: "점심 약속",
+              color: googleColors.orange,
+              temp: "14°",
+              time: "오후 12:30",
+              type: "time",
+            },
+          ],
+          6: [
+            {
+              name: "주말 휴식",
+              color: googleColors.gray,
+              temp: "11°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          7: [
+            {
+              name: "점심 약속",
+              color: googleColors.green,
+              temp: "15°",
+              time: "오후 1:00",
+              type: "time",
+            },
+            {
+              name: "쇼핑",
+              color: googleColors.pink,
+              temp: "13°",
+              time: "오후 3:00",
+              type: "time",
+            },
+          ],
+          8: [
+            {
+              name: "운동",
+              color: googleColors.yellow,
+              temp: "16°",
+              time: "오전 7:00",
+              type: "time",
+            },
+            {
+              name: "독서",
+              color: googleColors.brown,
+              temp: "18°",
+              time: "오후 8:00",
+              type: "time",
+            },
+          ],
+          9: [
+            {
+              name: "운동",
+              color: googleColors.yellow,
+              temp: "18°",
+              time: "오전 7:00",
+              type: "time",
+            },
+            {
+              name: "영화관람",
+              color: googleColors.blue,
+              temp: "20°",
+              time: "오후 7:30",
+              type: "time",
+            },
+          ],
+          10: [
+            {
+              name: "가족 모임",
+              color: googleColors.red,
+              temp: "19°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          11: [
+            {
+              name: "쇼핑",
+              color: googleColors.pink,
+              temp: "20°",
+              time: "오후 2:00",
+              type: "time",
+            },
+            {
+              name: "카페",
+              color: googleColors.brown,
+              temp: "22°",
+              time: "오후 4:00",
+              type: "time",
+            },
+          ],
+          12: [
+            {
+              name: "주말 여행",
+              color: googleColors.teal,
+              temp: "21°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          13: [
+            {
+              name: "영화관람",
+              color: googleColors.blue,
+              temp: "22°",
+              time: "오후 7:00",
+              type: "time",
+            },
+            {
+              name: "저녁 식사",
+              color: googleColors.orange,
+              temp: "24°",
+              time: "오후 8:30",
+              type: "time",
+            },
+          ],
+          14: [
+            {
+              name: "휴식일",
+              color: googleColors.gray,
+              temp: "23°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          15: [
+            {
+              name: "프로젝트 회의",
+              color: googleColors.blue,
+              temp: "24°",
+              time: "오전 10:00",
+              type: "time",
+            },
+            {
+              name: "점심 미팅",
+              color: googleColors.green,
+              temp: "26°",
+              time: "오후 12:00",
+              type: "time",
+            },
+          ],
+          16: [
+            {
+              name: "개인 업무",
+              color: googleColors.purple,
+              temp: "25°",
+              time: "오전 9:00",
+              type: "time",
+            },
+          ],
+          17: [
+            {
+              name: "맑은 하늘",
+              color: googleColors.yellow,
+              temp: "28°",
+              time: "하루종일",
+              type: "all-day",
+            },
+            {
+              name: "야외 활동",
+              color: googleColors.green,
+              temp: "30°",
+              time: "오후 2:00",
+              type: "time",
+            },
+          ],
+          18: [
+            {
+              name: "점심 약속",
+              color: googleColors.orange,
+              temp: "26°",
+              time: "오후 1:00",
+              type: "time",
+            },
+            {
+              name: "쇼핑",
+              color: googleColors.pink,
+              temp: "28°",
+              time: "오후 3:00",
+              type: "time",
+            },
+          ],
+          19: [
+            {
+              name: "가랑비",
+              color: googleColors.teal,
+              temp: "19°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          20: [
+            {
+              name: "팀 워크샵",
+              color: googleColors.blue,
+              temp: "22°",
+              time: "오전 9:00",
+              type: "time",
+            },
+            {
+              name: "점심",
+              color: googleColors.green,
+              temp: "24°",
+              time: "오후 12:30",
+              type: "time",
+            },
+          ],
+          21: [
+            {
+              name: "클라이언트 미팅",
+              color: googleColors.purple,
+              temp: "23°",
+              time: "오후 2:00",
+              type: "time",
+            },
+            {
+              name: "프로젝트 검토",
+              color: googleColors.teal,
+              temp: "25°",
+              time: "오후 4:00",
+              type: "time",
+            },
+          ],
+          22: [
+            {
+              name: "개인 시간",
+              color: googleColors.brown,
+              temp: "24°",
+              time: "오후 6:00",
+              type: "time",
+            },
+          ],
+          23: [
+            {
+              name: "흐림",
+              color: googleColors.gray,
+              temp: "21°",
+              time: "하루종일",
+              type: "all-day",
+            },
+            {
+              name: "실내 활동",
+              color: googleColors.pink,
+              temp: "19°",
+              time: "오후 3:00",
+              type: "time",
+            },
+          ],
+          24: [
+            {
+              name: "저녁 약속",
+              color: googleColors.orange,
+              temp: "20°",
+              time: "오후 7:00",
+              type: "time",
+            },
+          ],
+          25: [
+            {
+              name: "가족 모임",
+              color: googleColors.red,
+              temp: "25°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          26: [
+            {
+              name: "휴식일",
+              color: googleColors.gray,
+              temp: "23°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          27: [
+            {
+              name: "독서",
+              color: googleColors.brown,
+              temp: "18°",
+              time: "오전 10:00",
+              type: "time",
+            },
+            {
+              name: "운동",
+              color: googleColors.yellow,
+              temp: "20°",
+              time: "오후 6:00",
+              type: "time",
+            },
+          ],
+          28: [
+            {
+              name: "주말 휴식",
+              color: googleColors.gray,
+              temp: "17°",
+              time: "하루종일",
+              type: "all-day",
+            },
+          ],
+          29: [
+            {
+              name: "요리",
+              color: googleColors.orange,
+              temp: "16°",
+              time: "오후 5:00",
+              type: "time",
+            },
+            {
+              name: "영화",
+              color: googleColors.blue,
+              temp: "18°",
+              time: "오후 8:00",
+              type: "time",
+            },
+          ],
+          30: [
+            {
+              name: "개인 프로젝트",
+              color: googleColors.purple,
+              temp: "15°",
+              time: "오전 9:00",
+              type: "time",
+            },
+          ],
+          31: [
+            {
+              name: "월말 정리",
+              color: googleColors.teal,
+              temp: "14°",
+              time: "오후 2:00",
+              type: "time",
+            },
+            {
+              name: "다음 달 계획",
+              color: googleColors.blue,
+              temp: "16°",
+              time: "오후 4:00",
+              type: "time",
+            },
+          ],
+        };
+
+        let selectedDate = 15; // Default selected date
+        let currentMonth = 10; // October
+        let currentYear = 2025;
+
+        // Get today's date
+        const today = new Date();
+        const todayDate = today.getDate();
+        const todayMonth = today.getMonth() + 1;
+        const todayYear = today.getFullYear();
+
+        // Generate minimal calendar
+        function generateCalendar() {
+          const calendarGrid = document.getElementById("calendarGrid");
+          const monthNames = [
+            "1월",
+            "2월",
+            "3월",
+            "4월",
+            "5월",
+            "6월",
+            "7월",
+            "8월",
+            "9월",
+            "10월",
+            "11월",
+            "12월",
+          ];
+
+          // Update month/year display
+          document.querySelector(".calendar-month").textContent =
+            monthNames[currentMonth - 1];
+          document.querySelector(".calendar-year").textContent = currentYear;
+
+          const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+          const firstDayOfWeek = new Date(
+            currentYear,
+            currentMonth - 1,
+            1
+          ).getDay();
+          const eventDays = Object.keys(calendarEvents).map(Number);
+
+          // Clear previous calendar
+          calendarGrid.innerHTML = "";
+
+          // Previous month days
+          const prevMonthDays = new Date(
+            currentYear,
+            currentMonth - 1,
+            0
+          ).getDate();
+          for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+            const day = prevMonthDays - i;
+            const dayEl = document.createElement("div");
+            dayEl.className = "calendar-day other-month";
+            dayEl.textContent = day;
+            calendarGrid.appendChild(dayEl);
+          }
+
+          // Current month days
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dayEl = document.createElement("div");
+            dayEl.className = "calendar-day";
+            dayEl.dataset.day = day;
+
+            // Check if this is today
+            if (
+              day === todayDate &&
+              currentMonth === todayMonth &&
+              currentYear === todayYear
+            ) {
+              dayEl.classList.add("today");
+            }
+
+            if (eventDays.includes(day)) {
+              dayEl.classList.add("has-event");
+              // Add event dots container
+              const dotsContainer = document.createElement("div");
+              dotsContainer.className = "event-dots";
+              const events = calendarEvents[day];
+              events.forEach((event, index) => {
+                const dot = document.createElement("span");
+                dot.className = "event-dot";
+                dot.textContent = "●";
+                dot.style.color = event.color;
+                dot.style.fontSize = "6px";
+                dot.style.display = "inline-block";
+                dotsContainer.appendChild(dot);
+              });
+
+              dayEl.appendChild(dotsContainer);
+            }
+
+            if (day === selectedDate) {
+              dayEl.classList.add("selected");
+            }
+
+            // Add day number as text node instead of textContent
+            const dayText = document.createTextNode(day);
+            dayEl.appendChild(dayText);
+
+            // Add click event
+            dayEl.addEventListener("click", () => {
+              // Remove previous selection
+              document
+                .querySelectorAll(".calendar-day.selected")
+                .forEach((el) => {
+                  el.classList.remove("selected");
+                });
+
+              // Add selection to clicked day
+              dayEl.classList.add("selected");
+              selectedDate = day;
+
+              // Update events list
+              updateEventsList(day);
+            });
+
+            calendarGrid.appendChild(dayEl);
+          }
+
+          // Next month days
+          const totalCells = calendarGrid.children.length;
+          const remainingCells = 42 - totalCells;
+          for (let day = 1; day <= remainingCells; day++) {
+            const dayEl = document.createElement("div");
+            dayEl.className = "calendar-day other-month";
+            dayEl.textContent = day;
+            calendarGrid.appendChild(dayEl);
+          }
+        }
+
+        // Month navigation functions
+        function goToPreviousMonth() {
+          currentMonth--;
+          if (currentMonth < 1) {
+            currentMonth = 12;
+            currentYear--;
+          }
+          selectedDate = 1; // Reset to first day
+          generateCalendar();
+          updateEventsList(selectedDate);
+        }
+
+        function goToNextMonth() {
+          currentMonth++;
+          if (currentMonth > 12) {
+            currentMonth = 1;
+            currentYear++;
+          }
+          selectedDate = 1; // Reset to first day
+          generateCalendar();
+          updateEventsList(selectedDate);
+        }
+
+        // Update events list based on selected date
+        function updateEventsList(day) {
+          const eventsContainer = document.querySelector(".events-minimal");
+          eventsContainer.innerHTML = "";
+
+          if (calendarEvents[day]) {
+            calendarEvents[day].forEach((event) => {
+              const eventRow = document.createElement("div");
+              eventRow.className = "event-row";
+              eventRow.style.setProperty("--event-color", event.color);
+
+              const timeDisplay =
+                event.type === "all-day"
+                  ? `<span class="event-time all-day">하루종일</span>`
+                  : `<span class="event-time">${event.time}</span>`;
+
+              const locationDisplay = event.location
+                ? `<div class="event-location">📍 ${event.location}</div>`
+                : "";
+              const weatherDisplay = event.weather
+                ? `<div class="event-weather">${event.weather}</div>`
+                : "";
+
+              eventRow.innerHTML = `
+                 <div class="event-content">
+                   <div class="event-description">
+                     <div class="event-color-dot" style="background-color: ${event.color}"></div>
+                     ${event.name}
+                   </div>
+                   ${timeDisplay}
+                   ${locationDisplay}
+                   ${weatherDisplay}
+                 </div>
+                 <div class="event-temp">${event.temp}</div>
+               `;
+
+              eventsContainer.appendChild(eventRow);
+            });
+          }
+          // If no events, leave container empty as requested
+        }
+
+        generateCalendar();
+
+        // Initialize events list with default selected date
+        updateEventsList(selectedDate);
+
+        // Make month navigation functions globally available
+        window.goToPreviousMonth = goToPreviousMonth;
+        window.goToNextMonth = goToNextMonth;
+
+        // Generate hourly forecast
+        function generateHourlyForecast() {
+          const forecastScroll = document.getElementById("forecastScroll");
+
+          const hourlyData = [
+            { time: "지금", temp: "24°", icon: "☀️", event: null },
+            { time: "오후 3시", temp: "25°", icon: "☀️", event: null },
+            {
+              time: "오후 6시",
+              temp: "23°",
+              icon: "☁️",
+              event: { name: "팀 미팅", location: "강남, 서울" },
+            },
+            { time: "오후 9시", temp: "21°", icon: "☁️", event: null },
+            { time: "오전 12시", temp: "19°", icon: "🌙", event: null },
+            { time: "오전 3시", temp: "18°", icon: "🌙", event: null },
+            { time: "오전 6시", temp: "17°", icon: "☁️", event: null },
+            {
+              time: "오전 9시",
+              temp: "20°",
+              icon: "☀️",
+              event: { name: "제인과 커피", location: "이태원 카페" },
+            },
+            { time: "오후 12시", temp: "24°", icon: "☀️", event: null },
+            { time: "오후 3시", temp: "26°", icon: "☀️", event: null },
+          ];
+
+          hourlyData.forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "forecast-item card";
+
+            let eventHTML = "";
+            if (item.event) {
+              eventHTML = `
+                      <div class="forecast-event">
+                          <div class="forecast-event-name">${item.event.name}</div>
+                          <div class="forecast-event-location">${item.event.location}</div>
+                      </div>
+                  `;
+            } else {
+              eventHTML = '<div class="forecast-event"></div>';
+            }
+
+            card.innerHTML = `
+                  <div class="forecast-time">${item.time}</div>
+                  <div class="forecast-icon">${item.icon}</div>
+                  <div class="forecast-temp gradation-text">${item.temp}</div>
+                  ${eventHTML}
+              `;
+
+            forecastScroll.appendChild(card);
+          });
+        }
+
+        generateHourlyForecast();
+      });
+    </script>
+  </body>
+</html>
